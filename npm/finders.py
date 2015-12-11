@@ -30,10 +30,8 @@ def flatten_patterns(patterns):
         for module_pattern in module_patterns
     ]
 
-def match(name, patterns, is_dir=False):
-    if is_dir and any(pattern.startswith(name) for pattern in patterns):
-        return True
-    return django_utils.matches_patterns(name, patterns)
+def may_contain_match(directory, patterns):
+    return any(pattern.startswith(directory) for pattern in patterns)
 
 def get_files(storage, ignore_patterns=None, match_patterns=None, location=''):
     if ignore_patterns is None:
@@ -47,7 +45,7 @@ def get_files(storage, ignore_patterns=None, match_patterns=None, location=''):
             continue
         if location:
             fn = os.path.join(location, fn)
-        if not match(fn, match_patterns):
+        if not django_utils.matches_patterns(fn, match_patterns):
             continue
         yield fn
     for dir in directories:
@@ -55,10 +53,9 @@ def get_files(storage, ignore_patterns=None, match_patterns=None, location=''):
             continue
         if location:
             dir = os.path.join(location, dir)
-        if not match(dir, match_patterns, is_dir=True):
-            continue
-        for fn in get_files(storage, ignore_patterns, match_patterns, dir):
-            yield fn
+        if may_contain_match(dir, match_patterns) or django_utils.matches_patterns(dir, match_patterns):
+            for fn in get_files(storage, ignore_patterns, match_patterns, dir):
+                yield fn
 
 
 class NpmFinder(FileSystemFinder):
